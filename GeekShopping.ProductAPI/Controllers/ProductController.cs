@@ -40,9 +40,9 @@ namespace GeekShopping.ProductAPI.Controllers
                 return BadRequest($"Erro ao buscar o produto pelo Id = {id}: {ex.Message}");
             }            
         }
-
+        
         [HttpPost]
-        public async Task<ActionResult<ProductVO>> Create(ProductVO product)
+        public async Task<ActionResult<ProductVO>> Create([FromBody] ProductVO product)
         {
             try
             {
@@ -60,7 +60,7 @@ namespace GeekShopping.ProductAPI.Controllers
 }
 
         [HttpPut]
-        public async Task<ActionResult<ProductVO>> Update(ProductVO product)
+        public async Task<ActionResult<ProductVO>> Update([FromBody] ProductVO product)
         {
             try
             {
