@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/GeekShopping.Web.styles.css" asp-append-version="true" />
     <script src="https://kit.fontawesome.com/8cb5537b79.js" crossorigin="anonymous"></script>
-    @*<link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.1.1/css/all.css" integrity="sha384-/frq1SRXYH/bSyou/HUp/hib7RVN1TawQYja658FEOodR/FQBKVqT9Ol+Oz3Olq5" crossorigin="anonymous">*@
 </head>
 <body>
     <header>
@@ -22,12 +21,13 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <partial name="_LoginPartial" />
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Product" asp-action="ProductIndex">Product</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Product" asp-action="ProductIndex">Produtos</a>
                         </li>
                     </ul>
                 </div>
