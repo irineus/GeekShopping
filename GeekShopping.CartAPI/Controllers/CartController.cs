@@ -18,11 +18,11 @@ namespace GeekShopping.CartAPI.Controllers
         }
 
         [HttpGet("find-cart/{id}")]
-        public async Task<ActionResult<CartVO>> FindById(string userId)
+        public async Task<ActionResult<CartVO>> FindById(string id)
         {
             try
             {
-                var cart = await _repository.FindCartByUserId(userId);
+                var cart = await _repository.FindCartByUserId(id);
                 return Ok(cart);
             }
             catch (RecordNotFoundException ex)
@@ -31,11 +31,11 @@ namespace GeekShopping.CartAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Erro ao buscar o carrinho pelo Id = {userId}: {ex.Message}");
+                return BadRequest($"Erro ao buscar o carrinho pelo Id = {id}: {ex.Message}");
             }
         }
 
-        [HttpPost("add-cart/{id}")]
+        [HttpPost("add-cart")]
         public async Task<ActionResult<CartVO>> AddCart(CartVO vo)
         {
             try
@@ -54,7 +54,7 @@ namespace GeekShopping.CartAPI.Controllers
             }
         }
         
-        [HttpPut("update-cart/{id}")]
+        [HttpPut("update-cart")]
         public async Task<ActionResult<CartVO>> UpdateCart(CartVO vo)
         {
             try
