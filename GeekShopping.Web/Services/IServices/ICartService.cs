@@ -4,7 +4,7 @@ namespace GeekShopping.Web.Services.IServices
 {
     public interface ICartService
     {
-        Task<CartViewModel> FindaCartByUserId(string userId, string token);
+        Task<CartViewModel> FindCartByUserId(string userId, string token);
         Task<CartViewModel> AddItemToCart(CartViewModel cart, string token);
         Task<CartViewModel> UpdateCart(CartViewModel cart, string token);
         Task<bool> RemoveFromCart(long cartId, string token);

@@ -29,6 +29,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Product" asp-action="ProductIndex">Produtos</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Cart" asp-action="CartIndex">
+                                <i class="fas fa-shopping-cart"></i>
+                                @*<span class="badge badge-pill badge-danger">@Model.Cart.Count</span>*@
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
