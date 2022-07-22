@@ -15,21 +15,21 @@ namespace GeekShopping.Web.Services
             _client = client ?? throw new ArgumentNullException(nameof(client));
         }
 
-        public async Task<IEnumerable<ProductViewModel>?> FindAllProducts(string token)
+        public async Task<IEnumerable<ProductViewModel>> FindAllProducts(string token)
         {
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var response = await _client.GetAsync(BasePath);
             return await response.ReadContentAs<IEnumerable<ProductViewModel>>();
         }
 
-        public async Task<ProductViewModel?> FindProductById(long id, string token)
+        public async Task<ProductViewModel> FindProductById(long id, string token)
         {
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var response = await _client.GetAsync($"{BasePath}/{id}");
             return await response.ReadContentAs<ProductViewModel>();
         }
         
-        public async Task<ProductViewModel?> CreateProduct(ProductViewModel model, string token)
+        public async Task<ProductViewModel> CreateProduct(ProductViewModel model, string token)
         {
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var response = await _client.PostAsJsonAsync(BasePath, model);

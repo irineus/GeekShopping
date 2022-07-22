@@ -91,6 +91,45 @@ namespace GeekShopping.CartAPI.Controllers
                 return BadRequest($"Erro ao buscar o carrinho pelo Id = {id}: {ex.Message}");
             }
         }
+        
+
+        [HttpPost("apply-coupon")]
+        public async Task<ActionResult<CartVO>> ApplyCoupon(CartVO vo)
+        {
+            try
+            {
+                var status = await _repository.ApplyCoupon(vo.CartHeader.UserId, vo.CartHeader.CouponCode);
+                if (!status) return NotFound();
+                return Ok(status);
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Erro ao aplicar cupom Cod = {vo.CartHeader.CouponCode} para o UserId = {vo.CartHeader.UserId}: {ex.Message}");
+            }
+        }
+        
+        [HttpDelete("remove-coupon/{userId}")]
+        public async Task<ActionResult<CartVO>> RemoveCoupon(string userId)
+        {
+            try
+            {
+                var status = await _repository.RemoveCoupon(userId);
+                if (!status) return NotFound();
+                return Ok(status);
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Erro ao remover cupom para o UserId = {userId}: {ex.Message}");
+            }
+        }
 
     }
 }
