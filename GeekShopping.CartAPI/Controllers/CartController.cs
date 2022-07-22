@@ -1,7 +1,7 @@
 using GeekShopping.CartAPI.Data.ValueObjects;
+using GeekShopping.CartAPI.Messages;
 using GeekShopping.CartAPI.Model.Errors;
 using GeekShopping.CartAPI.Repository;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GeekShopping.CartAPI.Controllers
@@ -128,6 +128,29 @@ namespace GeekShopping.CartAPI.Controllers
             catch (Exception ex)
             {
                 return BadRequest($"Erro ao remover cupom para o UserId = {userId}: {ex.Message}");
+            }
+        }
+        
+        [HttpPost("checkout")]
+        public async Task<ActionResult<CheckouHeaderVO>> Checkout(CheckouHeaderVO vo)
+        {
+            try
+            {
+                var cart = await _repository.FindCartByUserId(vo.UserId);
+                vo.CartDetails = cart.CartDetails;
+                vo.DateTime = DateTime.Now;
+
+                //TODO: RabbitMQ logic comes here!
+
+                return Ok(vo);
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Erro ao buscar o carrinho pelo Id = {vo.UserId}: {ex.Message}");
             }
         }
 
