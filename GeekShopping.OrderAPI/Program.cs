@@ -36,7 +36,8 @@ dbBuilder.UseMySql(connectionString,
 // Add services to the container.
 builder.Services.AddSingleton(new OrderRepository(dbBuilder.Options));
 
-builder.Services.AddHostedService<RabbitMQCheckoutConsumer>();
+//builder.Services.AddHostedService<RabbitMQCheckoutConsumer>();
+builder.Services.AddHostedService<AzureServiceBusConsumer>();
 
 builder.Services.AddControllers();
 

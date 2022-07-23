@@ -4,9 +4,9 @@ using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
 
-namespace GeekShopping.CartAPI.RabbitMQSender
+namespace GeekShopping.CartAPI.MessageSender
 {
-    public class RabbitMQMessageSender : IRabbitMQMessageSender
+    public class RabbitMQMessageSender : IMessageSender
     {
         private readonly string _hostName;
         private readonly string _password;
@@ -20,7 +20,7 @@ namespace GeekShopping.CartAPI.RabbitMQSender
             _userName = "guest";
         }
 
-        public void SendMessage(BaseMessage message, string queueName)
+        public void SendMessageAsync(BaseMessage message, string queueName)
         {
             var factory = new ConnectionFactory
             {

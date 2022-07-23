@@ -4,7 +4,7 @@ using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using GeekShopping.CartAPI.Config;
 using GeekShopping.CartAPI.Model.Context;
-using GeekShopping.CartAPI.RabbitMQSender;
+using GeekShopping.CartAPI.MessageSender;
 using GeekShopping.CartAPI.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -37,7 +37,8 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // Add services to the container.
 builder.Services.AddScoped<ICartRepository, CartRepository>();
-builder.Services.AddSingleton<IRabbitMQMessageSender, RabbitMQMessageSender>();
+//builder.Services.AddSingleton<IMessageSender, RabbitMQMessageSender>();
+builder.Services.AddSingleton<IMessageSender, AzureServiceBusSender>();
 
 builder.Services.AddControllers();
 
