@@ -1,7 +1,7 @@
 using GeekShopping.CartAPI.Data.ValueObjects;
 using GeekShopping.CartAPI.Messages;
 using GeekShopping.CartAPI.Model.Errors;
-using GeekShopping.CartAPI.RabbitMQSender;
+using GeekShopping.CartAPI.MessageSender;
 using GeekShopping.CartAPI.Repository;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,13 +11,13 @@ namespace GeekShopping.CartAPI.Controllers
     [Route("api/v1/[controller]")]
     public class CartController : ControllerBase
     {
-        private ICartRepository _repository;
-        private IRabbitMQMessageSender _rabbitMQMessageSender;
+        private readonly ICartRepository _repository;
+        private readonly IMessageSender _messageSender;
 
-        public CartController(ICartRepository repository, IRabbitMQMessageSender rabbitMQMessageSender)
+        public CartController(ICartRepository repository, IMessageSender messageSender)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _rabbitMQMessageSender = rabbitMQMessageSender;
+            _messageSender = messageSender;
         }
 
         [HttpGet("find-cart/{id}")]
@@ -144,7 +144,7 @@ namespace GeekShopping.CartAPI.Controllers
                 vo.CartDetails = cart.CartDetails;
                 vo.DateTime = DateTime.Now;
 
-                _rabbitMQMessageSender.SendMessage(vo, "checkoutqueue");
+                _messageSender.SendMessageAsync(vo, "checkoutqueue");
 
                 return Ok(vo);
             }
