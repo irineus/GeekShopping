@@ -1,39 +1,31 @@
-﻿using GeekShopping.OrderAPI.Messages;
+﻿using Azure.Messaging.ServiceBus;
+using GeekShopping.OrderAPI.Messages;
 using GeekShopping.OrderAPI.Model;
 using GeekShopping.OrderAPI.Repository;
-using Microsoft.Azure.ServiceBus;
 using System.Text;
 using System.Text.Json;
 
 namespace GeekShopping.OrderAPI.MessageConsumer
 {
-    public class AzureServiceBusConsumer : BackgroundService
+    public class AzureServiceBusConsumerAlternative : BackgroundService
     {
-        private readonly IQueueClient _queueClient;
         private readonly OrderRepository _repository;
+        private readonly ServiceBusClient _client;
+        private readonly ServiceBusProcessor _processor;
 
-        private const string QueueName = "checkoutqueue";
-
-        public AzureServiceBusConsumer(OrderRepository repository, IConfiguration configuration)
+        public AzureServiceBusConsumerAlternative(OrderRepository repository, IConfiguration configuration)
         {
             _repository = repository;
-            _queueClient = new QueueClient(configuration.GetConnectionString("AzureServiceBus"), QueueName);
-        }
-
-        ~AzureServiceBusConsumer()
-        {
-            _queueClient.CloseAsync();
+            _client = new ServiceBusClient(configuration.GetConnectionString("AzureServiceBus"));
+            _processor = _client.CreateProcessor("checkoutqueue", new ServiceBusProcessorOptions());
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             stoppingToken.ThrowIfCancellationRequested();
-            var messageHandlerOptions = new MessageHandlerOptions(ErrorHandler)
-            {
-                MaxConcurrentCalls = 1,
-                AutoComplete = false
-            };
-            _queueClient.RegisterMessageHandler(MessageHandler, messageHandlerOptions);
+            _processor.ProcessMessageAsync += MessageHandler;
+            _processor.ProcessErrorAsync += ErrorHandler;
+            await _processor.StartProcessingAsync(stoppingToken);
         }
 
         private async Task ProcessOrder(CheckoutHeaderVO vo)
@@ -73,19 +65,18 @@ namespace GeekShopping.OrderAPI.MessageConsumer
             await _repository.AddOrder(order);
         }
 
-        private async Task MessageHandler(Message message, CancellationToken stoppingToken)
+        private async Task MessageHandler(ProcessMessageEventArgs args)
         {
-            stoppingToken.ThrowIfCancellationRequested();
-            var body = Encoding.UTF8.GetString(message.Body.ToArray());
-            Console.WriteLine($"Received: {body}");
+            Console.WriteLine($"Received: {args.Message.Body}");
+            var body = Encoding.UTF8.GetString(args.Message.Body.ToArray());
             CheckoutHeaderVO vo = JsonSerializer.Deserialize<CheckoutHeaderVO>(body);
             ProcessOrder(vo).GetAwaiter().GetResult();
             // complete the message. message is deleted from the queue. 
-            await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
+            await args.CompleteMessageAsync(args.Message);
         }
 
         // handle any errors when receiving messages
-        private static Task ErrorHandler(ExceptionReceivedEventArgs args)
+        static Task ErrorHandler(ProcessErrorEventArgs args)
         {
             Console.WriteLine(args.Exception.ToString());
             return Task.CompletedTask;

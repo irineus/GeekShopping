@@ -1,6 +1,4 @@
-﻿using Azure.Messaging.ServiceBus;
-using GeekShopping.CartAPI.Messages;
-using GeekShopping.MessageBus;
+﻿using Microsoft.Azure.ServiceBus;
 using System.Text;
 using System.Text.Json;
 
@@ -8,28 +6,21 @@ namespace GeekShopping.CartAPI.MessageSender
 {
     public class AzureServiceBusSender : IMessageSender
     {
-        private readonly ServiceBusClient _client;
-        private readonly ServiceBusSender _sender;
+        public IConfiguration _configuration { get; }
 
         public AzureServiceBusSender(IConfiguration configuration)
         {
-            _client = new ServiceBusClient(configuration.GetConnectionString("AzureServiceBus"));
-            _sender = _client.CreateSender("checkoutqueue");
-        }
-        
-        ~AzureServiceBusSender()
-        {
-            _ = _sender.DisposeAsync();
-            _ = _client.DisposeAsync();
+            _configuration = configuration;
         }
 
-        public void SendMessageAsync(BaseMessage message, string queueName)
+
+        public async void SendMessageAsync<T>(T message, string queueName)
         {
-            var jsonMsg = GetMessageAsByteArray(message);
-            ServiceBusMessage busMessage = new ServiceBusMessage(jsonMsg);
             try
             {
-                _sender.SendMessageAsync(busMessage).GetAwaiter().GetResult();
+                var queueClient = new QueueClient(_configuration.GetConnectionString("AzureServiceBus"), queueName);
+                var msg = GetMessageAsByteArray(message);
+                await queueClient.SendAsync(new Message(msg));
             }
             catch (Exception ex)
             {
@@ -38,13 +29,13 @@ namespace GeekShopping.CartAPI.MessageSender
             
         }
 
-        private static byte[] GetMessageAsByteArray(BaseMessage message)
+        private static byte[] GetMessageAsByteArray<T>(T message)
         {
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
             };
-            var json = JsonSerializer.Serialize<CheckoutHeaderVO>((CheckoutHeaderVO)message, options);
+            var json = JsonSerializer.Serialize<T>((T)message, options);
             var body = Encoding.UTF8.GetBytes(json);
             return body;
         }

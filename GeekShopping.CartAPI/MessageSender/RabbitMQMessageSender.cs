@@ -20,7 +20,7 @@ namespace GeekShopping.CartAPI.MessageSender
             _userName = "guest";
         }
 
-        public void SendMessageAsync(BaseMessage message, string queueName)
+        public void SendMessageAsync<T>(T message, string queueName)
         {
             var factory = new ConnectionFactory
             {
@@ -37,13 +37,13 @@ namespace GeekShopping.CartAPI.MessageSender
                 exchange: "", routingKey: queueName, basicProperties: null, body: body);
         }
 
-        private byte[] GetMessageAsByteArray(BaseMessage message)
+        private static byte[] GetMessageAsByteArray<T>(T message)
         {
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
             };
-            var json = JsonSerializer.Serialize<CheckoutHeaderVO>((CheckoutHeaderVO)message, options);
+            var json = JsonSerializer.Serialize<T>((T)message, options);
             var body = Encoding.UTF8.GetBytes(json);
             return body;
         }

@@ -4,6 +4,6 @@ namespace GeekShopping.CartAPI.MessageSender
 {
     public interface IMessageSender
     {
-        void SendMessageAsync(BaseMessage message, string queueName);
+        void SendMessageAsync<T>(T message, string queueName);
     }
 }
