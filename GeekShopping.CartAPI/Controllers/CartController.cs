@@ -4,6 +4,7 @@ using GeekShopping.CartAPI.Model.Errors;
 using GeekShopping.CartAPI.MessageSender;
 using GeekShopping.CartAPI.Repository;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
 
 namespace GeekShopping.CartAPI.Controllers
 {
@@ -11,13 +12,15 @@ namespace GeekShopping.CartAPI.Controllers
     [Route("api/v1/[controller]")]
     public class CartController : ControllerBase
     {
-        private readonly ICartRepository _repository;
+        private readonly ICartRepository _cartRepository;
+        private readonly ICouponRepository _couponRepository;
         private readonly IMessageSender _messageSender;
 
-        public CartController(ICartRepository repository, IMessageSender messageSender)
+        public CartController(ICartRepository cartRepository, ICouponRepository couponRepository, IMessageSender messageSender)
         {
-            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _messageSender = messageSender;
+            _cartRepository = cartRepository ?? throw new ArgumentNullException(nameof(cartRepository));
+            _couponRepository = couponRepository ?? throw new ArgumentNullException(nameof(couponRepository));
+            _messageSender = messageSender ?? throw new ArgumentNullException(nameof(messageSender));
         }
 
         [HttpGet("find-cart/{id}")]
@@ -25,7 +28,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var cart = await _repository.FindCartByUserId(id);
+                var cart = await _cartRepository.FindCartByUserId(id);
                 return Ok(cart);
             }
             catch (RecordNotFoundException ex)
@@ -43,7 +46,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var cart = await _repository.SaveOrUpdateCart(vo);
+                var cart = await _cartRepository.SaveOrUpdateCart(vo);
                 if (cart is null) return NotFound();
                 return Ok(cart);
             }
@@ -62,7 +65,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var cart = await _repository.SaveOrUpdateCart(vo);
+                var cart = await _cartRepository.SaveOrUpdateCart(vo);
                 if (cart is null) return NotFound();
                 return Ok(cart);
             }
@@ -81,7 +84,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var status = await _repository.RemoveFromCart(id);
+                var status = await _cartRepository.RemoveFromCart(id);
                 if (!status) return BadRequest();
                 return Ok(status);
             }
@@ -101,7 +104,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var status = await _repository.ApplyCoupon(vo.CartHeader.UserId, vo.CartHeader.CouponCode);
+                var status = await _cartRepository.ApplyCoupon(vo.CartHeader.UserId, vo.CartHeader.CouponCode);
                 if (!status) return NotFound();
                 return Ok(status);
             }
@@ -120,7 +123,7 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
-                var status = await _repository.RemoveCoupon(userId);
+                var status = await _cartRepository.RemoveCoupon(userId);
                 if (!status) return NotFound();
                 return Ok(status);
             }
@@ -139,8 +142,20 @@ namespace GeekShopping.CartAPI.Controllers
         {
             try
             {
+                var token = await HttpContext.GetTokenAsync("access_token");
                 if (vo?.UserId is null) return BadRequest();
-                var cart = await _repository.FindCartByUserId(vo.UserId);
+                var cart = await _cartRepository.FindCartByUserId(vo.UserId);
+
+                if (!string.IsNullOrEmpty(vo.CouponCode))
+                {
+                    CouponVO coupon = await _couponRepository.GetCoupon(vo.CouponCode, token);
+                    if (vo.DiscountAmount != coupon.DiscountAmount)
+                    {
+                        // Sinaliza que as condições mudaram
+                        return StatusCode(412);
+                    }
+                }
+                
                 vo.CartDetails = cart.CartDetails;
                 vo.DateTime = DateTime.Now;
 

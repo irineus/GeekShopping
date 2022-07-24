@@ -37,10 +37,15 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // Add services to the container.
 builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+
 //builder.Services.AddSingleton<IMessageSender, RabbitMQMessageSender>();
 builder.Services.AddSingleton<IMessageSender, AzureServiceBusSender>();
 
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient<ICouponRepository, CouponRepository>(s => s.BaseAddress =
+    new Uri(builder.Configuration["ServiceUrls:CouponAPI"]));
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
