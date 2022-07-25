@@ -2,30 +2,32 @@
 using System.Text;
 using System.Text.Json;
 
-namespace GeekShopping.CartAPI.MessageSender
+namespace GeekShopping.PaymentAPI.MessageSender
 {
     public class AzureServiceBusSender : IMessageSender
     {
-        public IConfiguration _configuration { get; }
-
+        private readonly IConfiguration _configuration;
+    
         public AzureServiceBusSender(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
 
-        public async void SendMessageAsync<T>(T message, string queueName)
+        public async Task<bool> SendMessageAsync<T>(T message, string queueName)
         {
             try
             {
                 var queueClient = CreateConnection(queueName); 
                 var msg = GetMessageAsByteArray(message);
                 await queueClient.SendAsync(new Message(msg));
-                await CloseConnectionAsync(queueClient);                
+                await CloseConnectionAsync(queueClient);
+                return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending message '{message}': {ex.Message}");
+                return false;
             }
             
         }

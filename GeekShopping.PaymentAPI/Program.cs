@@ -1,11 +1,9 @@
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using GeekShopping.OrderAPI.MessageConsumer;
-using GeekShopping.OrderAPI.MessageSender;
-using GeekShopping.OrderAPI.Model.Context;
-using GeekShopping.OrderAPI.Repository;
-using Microsoft.EntityFrameworkCore;
+using GeekShopping.PaymentAPI.MessageConsumer;
+using GeekShopping.PaymentAPI.MessageSender;
+using GeekShopping.PaymentProcessor;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -23,24 +21,10 @@ var client = new SecretClient(new Uri(keyVaultEndpoint), credential);
 
 builder.Configuration.AddAzureKeyVault(client, new AzureKeyVaultConfigurationOptions());
 
-// Connect to Azure MySQL Database
-var connectionString = builder.Configuration.GetConnectionString("GeekShoppingOrderContext");
-
-builder.Services.AddDbContext<MySQLContext>(options =>
-    options.UseMySql(connectionString,
-        ServerVersion.AutoDetect(connectionString)));
-
-var dbBuilder = new DbContextOptionsBuilder<MySQLContext>();
-dbBuilder.UseMySql(connectionString,
-    ServerVersion.AutoDetect(connectionString));
-
 // Add services to the container.
-builder.Services.AddSingleton(new OrderRepository(dbBuilder.Options));
-
-//builder.Services.AddHostedService<RabbitMQCheckoutConsumer>();
-builder.Services.AddHostedService<AzureServiceBusCheckoutConsumer>();
-builder.Services.AddHostedService<AzureServiceBusPaymentConsumer>();
+builder.Services.AddSingleton<IProcessPayment, ProcessPayment>();
 builder.Services.AddSingleton<IMessageSender, AzureServiceBusSender>();
+builder.Services.AddHostedService<AzureServiceBusConsumer>();
 
 builder.Services.AddControllers();
 
@@ -67,7 +51,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "GeekShopping.OrderAPI", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "GeekShopping.PaymentAPI", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"Informe o 'Bearer' [space] e o seu token!",
@@ -102,7 +86,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "GeekShopping.OrderAPI v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "GeekShopping.PaymentAPI v1"));
 }
 
 app.UseHttpsRedirection();

@@ -2,7 +2,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace GeekShopping.CartAPI.MessageSender
+namespace GeekShopping.OrderAPI.MessageSender
 {
     public class AzureServiceBusSender : IMessageSender
     {

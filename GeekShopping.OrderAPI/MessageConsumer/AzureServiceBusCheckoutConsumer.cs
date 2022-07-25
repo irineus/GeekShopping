@@ -1,31 +1,42 @@
-﻿using Azure.Messaging.ServiceBus;
-using GeekShopping.OrderAPI.Messages;
+﻿using GeekShopping.OrderAPI.Messages;
+using GeekShopping.OrderAPI.MessageSender;
 using GeekShopping.OrderAPI.Model;
 using GeekShopping.OrderAPI.Repository;
+using Microsoft.Azure.ServiceBus;
 using System.Text;
 using System.Text.Json;
 
 namespace GeekShopping.OrderAPI.MessageConsumer
 {
-    public class AzureServiceBusConsumerAlternative : BackgroundService
+    public class AzureServiceBusCheckoutConsumer : BackgroundService
     {
+        private readonly IQueueClient _queueClient;
         private readonly OrderRepository _repository;
-        private readonly ServiceBusClient _client;
-        private readonly ServiceBusProcessor _processor;
+        private readonly IMessageSender _messageSender;
 
-        public AzureServiceBusConsumerAlternative(OrderRepository repository, IConfiguration configuration)
+        private const string QueueName = "checkoutqueue";
+
+        public AzureServiceBusCheckoutConsumer(OrderRepository repository, IConfiguration configuration, IMessageSender messageSender)
         {
             _repository = repository;
-            _client = new ServiceBusClient(configuration.GetConnectionString("AzureServiceBus"));
-            _processor = _client.CreateProcessor("checkoutqueue", new ServiceBusProcessorOptions());
+            _messageSender = messageSender;
+            _queueClient = new QueueClient(configuration.GetConnectionString("AzureServiceBus"), QueueName);
+        }
+
+        ~AzureServiceBusCheckoutConsumer()
+        {
+            _queueClient.CloseAsync();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             stoppingToken.ThrowIfCancellationRequested();
-            _processor.ProcessMessageAsync += MessageHandler;
-            _processor.ProcessErrorAsync += ErrorHandler;
-            await _processor.StartProcessingAsync(stoppingToken);
+            var messageHandlerOptions = new MessageHandlerOptions(ErrorHandler)
+            {
+                MaxConcurrentCalls = 1,
+                AutoComplete = false
+            };
+            _queueClient.RegisterMessageHandler(MessageHandler, messageHandlerOptions);
         }
 
         private async Task ProcessOrder(CheckoutHeaderVO vo)
@@ -63,20 +74,42 @@ namespace GeekShopping.OrderAPI.MessageConsumer
             }
 
             await _repository.AddOrder(order);
+
+            PaymentVO payment = new()
+            {
+                Name = order.FirstName + " " + order.LastName,
+                CardNumber = order.CardNumber,
+                CVV = order.CVV,
+                ExpiryMonthYear = order.ExpiryMonthYear,
+                OrderId = order.Id,
+                PurchaseAmount = order.PurchaseAmount,
+                Email = order.Email
+            };
+
+            try
+            {
+                _messageSender.SendMessageAsync(payment, "orderpaymentprocessqueue");
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception($"Erro ao processar ordem de pagamento: {ex.Message}");
+            }
         }
 
-        private async Task MessageHandler(ProcessMessageEventArgs args)
+        private async Task MessageHandler(Message message, CancellationToken stoppingToken)
         {
-            Console.WriteLine($"Received: {args.Message.Body}");
-            var body = Encoding.UTF8.GetString(args.Message.Body.ToArray());
+            stoppingToken.ThrowIfCancellationRequested();
+            var body = Encoding.UTF8.GetString(message.Body.ToArray());
+            Console.WriteLine($"Received: {body}");
             CheckoutHeaderVO vo = JsonSerializer.Deserialize<CheckoutHeaderVO>(body);
             ProcessOrder(vo).GetAwaiter().GetResult();
             // complete the message. message is deleted from the queue. 
-            await args.CompleteMessageAsync(args.Message);
+            await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
         }
 
         // handle any errors when receiving messages
-        static Task ErrorHandler(ProcessErrorEventArgs args)
+        private static Task ErrorHandler(ExceptionReceivedEventArgs args)
         {
             Console.WriteLine(args.Exception.ToString());
             return Task.CompletedTask;

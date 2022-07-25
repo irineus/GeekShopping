@@ -1,4 +1,5 @@
 ﻿using GeekShopping.OrderAPI.Messages;
+using GeekShopping.OrderAPI.MessageSender;
 using GeekShopping.OrderAPI.Model;
 using GeekShopping.OrderAPI.Repository;
 using Microsoft.Azure.ServiceBus;
@@ -7,20 +8,20 @@ using System.Text.Json;
 
 namespace GeekShopping.OrderAPI.MessageConsumer
 {
-    public class AzureServiceBusConsumer : BackgroundService
+    public class AzureServiceBusPaymentConsumer : BackgroundService
     {
         private readonly IQueueClient _queueClient;
         private readonly OrderRepository _repository;
 
-        private const string QueueName = "checkoutqueue";
+        private const string QueueName = "orderpaymentresultqueue";
 
-        public AzureServiceBusConsumer(OrderRepository repository, IConfiguration configuration)
+        public AzureServiceBusPaymentConsumer(OrderRepository repository, IConfiguration configuration)
         {
             _repository = repository;
             _queueClient = new QueueClient(configuration.GetConnectionString("AzureServiceBus"), QueueName);
         }
 
-        ~AzureServiceBusConsumer()
+        ~AzureServiceBusPaymentConsumer()
         {
             _queueClient.CloseAsync();
         }
@@ -36,41 +37,17 @@ namespace GeekShopping.OrderAPI.MessageConsumer
             _queueClient.RegisterMessageHandler(MessageHandler, messageHandlerOptions);
         }
 
-        private async Task ProcessOrder(CheckoutHeaderVO vo)
+        private async Task UpdatePaymentStatus(UpdatePaymentResultVO vo)
         {
-            OrderHeader order = new()
+            try
             {
-                UserId = vo.UserId,
-                FirstName = vo.FirstName,
-                LastName = vo.LastName,
-                OrderDetails = new List<OrderDetail>(),
-                CardNumber = vo.CardNumber,
-                CouponCode = vo.CouponCode,
-                CVV = vo.CVV,
-                DiscountAmount = vo.DiscountAmount,
-                Email = vo.Email,
-                ExpiryMonthYear = vo.ExpiryMonthYear,
-                OrderTime = DateTime.Now,
-                PurchaseAmount = vo.PurchaseAmount,
-                PaymentStatus = false,
-                Phone = vo.Phone,
-                DateTime = vo.DateTime
-            };
-
-            foreach (var details in vo.CartDetails)
-            {
-                OrderDetail detail = new()
-                {
-                    ProductId = details.ProductId,
-                    ProductName = details.Product.Name,
-                    Price = details.Product.Price,
-                    Count = details.Count,
-                };
-                order.CartTotalItems += details.Count;
-                order.OrderDetails.Add(detail);
+                await _repository.UpdateOrderPaymentStatus(vo.OrderId, vo.Status);
             }
+            catch (Exception ex)
+            {
 
-            await _repository.AddOrder(order);
+                throw new Exception($"Erro ao atualizar o status do pagamento: {ex.Message}");
+            }            
         }
 
         private async Task MessageHandler(Message message, CancellationToken stoppingToken)
@@ -78,8 +55,8 @@ namespace GeekShopping.OrderAPI.MessageConsumer
             stoppingToken.ThrowIfCancellationRequested();
             var body = Encoding.UTF8.GetString(message.Body.ToArray());
             Console.WriteLine($"Received: {body}");
-            CheckoutHeaderVO vo = JsonSerializer.Deserialize<CheckoutHeaderVO>(body);
-            ProcessOrder(vo).GetAwaiter().GetResult();
+            UpdatePaymentResultVO vo = JsonSerializer.Deserialize<UpdatePaymentResultVO>(body);
+            UpdatePaymentStatus(vo).GetAwaiter().GetResult();
             // complete the message. message is deleted from the queue. 
             await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
         }

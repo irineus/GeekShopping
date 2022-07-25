@@ -161,6 +161,8 @@ namespace GeekShopping.CartAPI.Controllers
 
                 _messageSender.SendMessageAsync(vo, "checkoutqueue");
 
+                await _cartRepository.ClearCart(vo.UserId);
+
                 return Ok(vo);
             }
             catch (RecordNotFoundException ex)
