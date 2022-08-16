@@ -26,7 +26,7 @@ namespace GeekShopping.ProductAPI.Repository
 
         public async Task<ProductVO> FindById(long id)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            Product product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
             if (product is null) 
             {
                 throw new RecordNotFoundException($"Produto id={id} não encontrado.");
@@ -36,7 +36,7 @@ namespace GeekShopping.ProductAPI.Repository
 
         public async Task<ProductVO> FindByIdNoTrack(long id)
         {
-            Product? product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            Product product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
             if (product is null)
             {
                 throw new RecordNotFoundException($"Produto id={id} não encontrado.");
@@ -82,7 +82,7 @@ namespace GeekShopping.ProductAPI.Repository
         {
             try
             {
-                Product? product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+                Product product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
                 if (product is null)
                 {
                     throw new RecordNotFoundException($"Produto id={id} não encontrado.");

@@ -1,15 +1,15 @@
-﻿using GeekShopping.PaymentAPI.Messages;
+﻿using Azure.Messaging.ServiceBus;
+using GeekShopping.PaymentAPI.Messages;
 using GeekShopping.PaymentAPI.MessageSender;
 using GeekShopping.PaymentProcessor;
-using Microsoft.Azure.ServiceBus;
-using System.Text;
 using System.Text.Json;
 
 namespace GeekShopping.PaymentAPI.MessageConsumer
 {
     public class AzureServiceBusConsumer : BackgroundService
     {
-        private readonly IQueueClient _queueClient;
+        private readonly ServiceBusClient _client;
+        private readonly ServiceBusProcessor _processor;
         private readonly IProcessPayment _processPayment;
         private readonly IMessageSender _messageSender;
 
@@ -19,23 +19,30 @@ namespace GeekShopping.PaymentAPI.MessageConsumer
         {
             _processPayment = processPayment;
             _messageSender = messageSender;
-            _queueClient = new QueueClient(configuration.GetConnectionString("AzureServiceBus"), QueueName);
-        }
-
-        ~AzureServiceBusConsumer()
-        {
-            _queueClient.CloseAsync();
+            _client = new ServiceBusClient(configuration.GetConnectionString("AzureServiceBus"));
+            _processor = _client.CreateProcessor(QueueName, new ServiceBusProcessorOptions() 
+                            { 
+                                AutoCompleteMessages = false,
+                                MaxConcurrentCalls = 1
+                            });
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            stoppingToken.ThrowIfCancellationRequested();
-            var messageHandlerOptions = new MessageHandlerOptions(ErrorHandler)
+            try
             {
-                MaxConcurrentCalls = 1,
-                AutoComplete = false
-            };
-            _queueClient.RegisterMessageHandler(MessageHandler, messageHandlerOptions);
+                stoppingToken.ThrowIfCancellationRequested();
+
+                _processor.ProcessMessageAsync += MessageHandler;
+
+                _processor.ProcessErrorAsync += ErrorHandler;
+
+                await _processor.StartProcessingAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro: {ex.Message}");
+            }
         }
 
         private async Task<bool> ProcessPayment(PaymentMessage vo)
@@ -43,13 +50,14 @@ namespace GeekShopping.PaymentAPI.MessageConsumer
             try
             {
                 var result = _processPayment.PaymentProcessor();
-                UpdatePaymentResultMessage payentResult = new UpdatePaymentResultMessage
+                UpdatePaymentResultMessage paymentResult = new UpdatePaymentResultMessage
                 {
                     Status = result,
                     OrderId = vo.OrderId,
                     Email = vo.Email
                 };
-                return await _messageSender.SendMessageAsync(payentResult, "orderpaymentresultqueue");
+                await _messageSender.SendMessageAsync(paymentResult, "orderpaymentresultqueue");
+                return true;
             }
             catch (Exception)
             {
@@ -57,22 +65,24 @@ namespace GeekShopping.PaymentAPI.MessageConsumer
             }
         }
 
-        private async Task MessageHandler(Message message, CancellationToken stoppingToken)
+        private async Task MessageHandler(ProcessMessageEventArgs args)
         {
-            stoppingToken.ThrowIfCancellationRequested();
-            var body = Encoding.UTF8.GetString(message.Body.ToArray());
+            var body = args.Message.Body.ToString();
             Console.WriteLine($"Received: {body}");
             PaymentMessage vo = JsonSerializer.Deserialize<PaymentMessage>(body);
             if (ProcessPayment(vo).GetAwaiter().GetResult())
             {
                 // complete the message. message is deleted from the queue. 
-                await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
+                await args.CompleteMessageAsync(args.Message);
             }
-            await _queueClient.AbandonAsync(message.SystemProperties.LockToken);
+            else
+            {
+                await args.AbandonMessageAsync(args.Message);
+            }            
         }
 
         // handle any errors when receiving messages
-        private static Task ErrorHandler(ExceptionReceivedEventArgs args)
+        private static Task ErrorHandler(ProcessErrorEventArgs args)
         {
             Console.WriteLine(args.Exception.ToString());
             return Task.CompletedTask;

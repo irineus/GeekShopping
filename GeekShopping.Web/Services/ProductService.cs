@@ -43,7 +43,7 @@ namespace GeekShopping.Web.Services
             }
         }
         
-        public async Task<ProductViewModel?> UpdateProduct(ProductViewModel model, string token)
+        public async Task<ProductViewModel> UpdateProduct(ProductViewModel model, string token)
         {
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var response = await _client.PutAsJsonAsync(BasePath, model);

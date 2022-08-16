@@ -20,7 +20,7 @@ namespace GeekShopping.CartAPI.MessageSender
             _userName = "guest";
         }
 
-        public void SendMessageAsync<T>(T message, string queueName)
+        public async Task SendMessageAsync<T>(T message, string queueName)
         {
             var factory = new ConnectionFactory
             {

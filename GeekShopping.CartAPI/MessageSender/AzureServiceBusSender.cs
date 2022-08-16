@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
 using System.Text;
 using System.Text.Json;
 
@@ -6,22 +6,31 @@ namespace GeekShopping.CartAPI.MessageSender
 {
     public class AzureServiceBusSender : IMessageSender
     {
-        public IConfiguration _configuration { get; }
+        private readonly IConfiguration _configuration;
 
         public AzureServiceBusSender(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
-
-        public async void SendMessageAsync<T>(T message, string queueName)
+        public async Task SendMessageAsync<T>(T message, string queueName)
         {
             try
             {
-                var queueClient = CreateConnection(queueName); 
-                var msg = GetMessageAsByteArray(message);
-                await queueClient.SendAsync(new Message(msg));
-                await CloseConnectionAsync(queueClient);                
+                var client = CreateConnection(_configuration.GetConnectionString("AzureServiceBus"));
+                var sender = client.CreateSender(queueName);
+                try
+                {
+                    await sender.SendMessageAsync(GetMessageAsServiceBusMessage(message));
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
+                finally
+                {
+                    await CloseConnectionAsync(client, sender);
+                }
             }
             catch (Exception ex)
             {
@@ -30,25 +39,32 @@ namespace GeekShopping.CartAPI.MessageSender
             
         }
 
-        private static async Task CloseConnectionAsync(QueueClient queueClient)
-        {
-            if (!queueClient.IsClosedOrClosing) await queueClient.CloseAsync();
-        }
-
-        private QueueClient CreateConnection(string queueName)
-        {
-            return new QueueClient(_configuration.GetConnectionString("AzureServiceBus"), queueName);
-        }
-
-        private static byte[] GetMessageAsByteArray<T>(T message)
+        private static ServiceBusMessage GetMessageAsServiceBusMessage<T>(T message)
         {
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
             };
             var json = JsonSerializer.Serialize<T>((T)message, options);
-            var body = Encoding.UTF8.GetBytes(json);
-            return body;
+            return new ServiceBusMessage(json)
+            {
+                ContentType = "application/json"
+            };
+        }
+
+        private static async Task CloseConnectionAsync(ServiceBusClient client, ServiceBusSender sender)
+        {
+            if (!client.IsClosed)
+            {
+                await sender.CloseAsync();
+            }
+            await sender.DisposeAsync();
+            await client.DisposeAsync();
+        }
+
+        private static ServiceBusClient CreateConnection(string connectionString)
+        {
+            return new ServiceBusClient(connectionString);
         }
     }
 }

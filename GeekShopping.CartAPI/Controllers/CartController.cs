@@ -159,7 +159,7 @@ namespace GeekShopping.CartAPI.Controllers
                 vo.CartDetails = cart.CartDetails;
                 vo.DateTime = DateTime.Now;
 
-                _messageSender.SendMessageAsync(vo, "checkoutqueue");
+                await _messageSender.SendMessageAsync(vo, "checkoutqueue");
 
                 await _cartRepository.ClearCart(vo.UserId);
 
