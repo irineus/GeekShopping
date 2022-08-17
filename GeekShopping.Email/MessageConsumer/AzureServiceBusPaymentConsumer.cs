@@ -1,21 +1,20 @@
 ﻿using Azure.Messaging.ServiceBus;
-using GeekShopping.OrderAPI.Messages;
-using GeekShopping.OrderAPI.Repository;
-using System.Text;
+using GeekShopping.Email.Messages;
+using GeekShopping.Email.Repository;
 using System.Text.Json;
 
-namespace GeekShopping.OrderAPI.MessageConsumer
+namespace GeekShopping.Email.MessageConsumer
 {
     public class AzureServiceBusPaymentConsumer : BackgroundService
     {
         private readonly ServiceBusClient _client;
         private readonly ServiceBusProcessor _processor;
-        private readonly OrderRepository _repository;
+        private readonly EmailRepository _repository;
 
         private const string TopicName = "paymentupdatetopic";
-        private const string SubscriptionName = "paymentupdateonorder";
+        private const string SubscriptionName = "paymentupdateemail";
 
-        public AzureServiceBusPaymentConsumer(OrderRepository repository, IConfiguration configuration)
+        public AzureServiceBusPaymentConsumer(EmailRepository repository, IConfiguration configuration)
         {
             _repository = repository;
             _client = new ServiceBusClient(configuration.GetConnectionString("AzureServiceBus"));
@@ -44,11 +43,11 @@ namespace GeekShopping.OrderAPI.MessageConsumer
             }
         }
 
-        private async Task<bool> UpdatePaymentStatus(UpdatePaymentResultVO vo)
+        private async Task<bool> ProcessLogs(UpdatePaymentResultMessage message)
         {
             try
             {
-                await _repository.UpdateOrderPaymentStatus(vo.OrderId, vo.Status);
+                await _repository.LogEmail(message);
                 return true;
             }
             catch (Exception ex)
@@ -62,8 +61,8 @@ namespace GeekShopping.OrderAPI.MessageConsumer
         {
             var body = args.Message.Body.ToString();
             Console.WriteLine($"Received: {body}");
-            UpdatePaymentResultVO vo = JsonSerializer.Deserialize<UpdatePaymentResultVO>(body);
-            if (UpdatePaymentStatus(vo).GetAwaiter().GetResult())
+            UpdatePaymentResultMessage mesage = JsonSerializer.Deserialize<UpdatePaymentResultMessage>(body);
+            if (ProcessLogs(mesage).GetAwaiter().GetResult())
             {
                 // complete the message. message is deleted from the queue. 
                 await args.CompleteMessageAsync(args.Message);

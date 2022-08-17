@@ -6,17 +6,18 @@ namespace GeekShopping.PaymentAPI.MessageSender
     public class AzureServiceBusSender : IMessageSender
     {
         private readonly IConfiguration _configuration;
+        private readonly ServiceBusClient _client;
 
         public AzureServiceBusSender(IConfiguration configuration)
         {
             _configuration = configuration;
+            _client = CreateConnection(_configuration.GetConnectionString("AzureServiceBus"));
         }
-        public async Task SendMessageAsync<T>(T message, string queueName)
+        public async Task SendMessageAsync<T>(T message, string serviceName)
         {
             try
             {
-                var client = CreateConnection(_configuration.GetConnectionString("AzureServiceBus"));
-                var sender = client.CreateSender(queueName);
+                var sender = _client.CreateSender(serviceName);
                 try
                 {
                     await sender.SendMessageAsync(GetMessageAsServiceBusMessage(message));
@@ -27,7 +28,7 @@ namespace GeekShopping.PaymentAPI.MessageSender
                 }
                 finally
                 {
-                    await CloseConnectionAsync(client, sender);
+                    await CloseConnectionAsync(_client, sender);
                 }
             }
             catch (Exception ex)

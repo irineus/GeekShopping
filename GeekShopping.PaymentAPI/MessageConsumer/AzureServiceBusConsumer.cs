@@ -56,7 +56,7 @@ namespace GeekShopping.PaymentAPI.MessageConsumer
                     OrderId = vo.OrderId,
                     Email = vo.Email
                 };
-                await _messageSender.SendMessageAsync(paymentResult, "orderpaymentresultqueue");
+                await _messageSender.SendMessageAsync(paymentResult, "paymentupdatetopic");
                 return true;
             }
             catch (Exception)
