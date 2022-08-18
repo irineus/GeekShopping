@@ -32,7 +32,7 @@ dbBuilder.UseMySql(connectionString,
     ServerVersion.AutoDetect(connectionString));
 
 // Add services to the container.
-builder.Services.AddSingleton(new EmailRepository(dbBuilder.Options));
+builder.Services.AddSingleton(new EmailRepository(dbBuilder.Options, builder.Configuration));
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 
 builder.Services.AddHostedService<AzureServiceBusPaymentConsumer>();

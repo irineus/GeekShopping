@@ -47,7 +47,7 @@ namespace GeekShopping.Email.MessageConsumer
         {
             try
             {
-                await _repository.LogEmail(message);
+                await _repository.ProcessEmail(message);
                 return true;
             }
             catch (Exception ex)

@@ -49,7 +49,7 @@ namespace GeekShopping.OrderAPI.Migrations
 
                     b.HasIndex("OrderHeaderId");
 
-                    b.ToTable("order_detail");
+                    b.ToTable("order_detail", (string)null);
                 });
 
             modelBuilder.Entity("GeekShopping.OrderAPI.Model.OrderHeader", b =>
@@ -121,7 +121,7 @@ namespace GeekShopping.OrderAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("order_header");
+                    b.ToTable("order_header", (string)null);
                 });
 
             modelBuilder.Entity("GeekShopping.OrderAPI.Model.OrderDetail", b =>
